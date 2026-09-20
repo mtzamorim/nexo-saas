@@ -1,0 +1,23 @@
+{
+  "relative_imports_resolved": 127,
+  "expected_generated_prisma_imports": 4,
+  "unresolved_source_imports": [],
+  "yaml_syntax_files": 2,
+  "css_syntax_files": 1,
+  "setup_script": "executed twice in temporary directory; random password generated; existing .env preserved",
+  "schema_and_migration_models": 11,
+  "schema_migration_note": "Only table-name coverage checked. Prisma/schema validity and database migration NOT executed.",
+  "local_document_links": "passed, including final VALIDATION.md",
+  "not_run": [
+    "dependency installation",
+    "semantic TypeScript checking",
+    "Vite build",
+    "Prisma validate and migration",
+    "database integration tests",
+    "schema tests",
+    "browser/E2E tests",
+    "Stripe",
+    "SMTP",
+    "Docker image build"
+  ]
+}

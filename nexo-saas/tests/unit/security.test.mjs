@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { sha256, randomToken, csrfToken, safeEqual, hashPassword, verifyPassword, isTrustedOrigin } from '../../apps/api/src/core/security.mjs';
+test('tokens: unique cryptographic values with 256 bits', () => { const values = new Set(Array.from({length:100},randomToken)); assert.equal(values.size,100); assert.equal([...values][0].length,43); });
+test('tokens: stored hash is not the raw token', () => { const raw=randomToken(); assert.notEqual(sha256(raw),raw); assert.equal(sha256(raw).length,64); });
+test('csrf: bound to session', () => assert.notEqual(csrfToken('a'),csrfToken('b')));
+test('csrf: equality accepts matching values', () => assert.equal(safeEqual('same','same'),true));
+test('csrf: missing token rejected', () => assert.equal(safeEqual(undefined,'same'),false));
+test('csrf: wrong length rejected', () => assert.equal(safeEqual('x','same'),false));
+test('origin: exact allowed origin accepted', () => assert.equal(isTrustedOrigin('https://app.example.com','https://app.example.com'),true));
+for (const origin of ['https://app.example.com.evil.test','http://app.example.com','https://evil.test','null',undefined]) test(`origin: rejects ${origin}`, () => assert.equal(isTrustedOrigin(origin,'https://app.example.com'),false));
+test('password: salted hashes differ and correct password verifies', async () => { const password='Correct-Horse-123'; const one=await hashPassword(password); const two=await hashPassword(password); assert.notEqual(one,two); assert.equal(await verifyPassword(password,one),true); assert.equal(await verifyPassword('wrong-password',one),false); });
+test('password: malformed hash does not verify', async () => assert.equal(await verifyPassword('secret','broken'),false));
+test('password: short password cannot be stored', async () => assert.rejects(hashPassword('short')));
+test('password: overly long password cannot be stored', async () => assert.rejects(hashPassword('x'.repeat(129))));

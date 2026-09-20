@@ -1,0 +1,15 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { projectCreateSchema, projectPatchSchema, taskCreateSchema, taskPatchSchema } from '../../apps/api/src/modules/schemas.js';
+const projectId = '83a2b3d4-19a8-4b3e-a143-92481c85f010';
+test('PATCH status never resets optional task fields', () => assert.deepEqual(taskPatchSchema.parse({ status: 'DONE', version: 2 }), { status: 'DONE', version: 2 }));
+test('PATCH title never clears assignee/date/priority', () => assert.deepEqual(taskPatchSchema.parse({ title: 'Nova entrega', version: 0 }), { title: 'Nova entrega', version: 0 }));
+test('explicit null can clear due date', () => assert.deepEqual(taskPatchSchema.parse({ dueDate: null, version: 0 }), { dueDate: null, version: 0 }));
+test('PATCH archive preserves project description and color', () => assert.deepEqual(projectPatchSchema.parse({ status: 'ARCHIVED' }), { status: 'ARCHIVED' }));
+test('PATCH project requires fields', () => assert.equal(projectPatchSchema.safeParse({}).success, false));
+test('PATCH task requires fields besides version', () => assert.equal(taskPatchSchema.safeParse({ version: 0 }).success, false));
+test('PATCH task requires version', () => assert.equal(taskPatchSchema.safeParse({ title: 'Outra tarefa' }).success, false));
+test('cannot inject workspaceId through project PATCH', () => assert.equal(projectPatchSchema.safeParse({ name: 'Teste', workspaceId: projectId }).success, false));
+test('cannot inject workspaceId through task PATCH', () => assert.equal(taskPatchSchema.safeParse({ title: 'Teste', version: 0, workspaceId: projectId }).success, false));
+test('create project has intentional defaults', () => assert.deepEqual(projectCreateSchema.parse({ name: 'Projeto teste' }), { name: 'Projeto teste', description: '', color: 'violet' }));
+test('create task has intentional defaults', () => assert.deepEqual(taskCreateSchema.parse({ title: 'Primeira tarefa', projectId }), { title: 'Primeira tarefa', projectId, description: '', assigneeMembershipId: null, status: 'TODO', priority: 'MEDIUM', dueDate: null }));

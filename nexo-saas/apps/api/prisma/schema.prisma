@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+  moduleFormat = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension = "js"
+}
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+enum Plan {
+  FREE
+  PRO
+}
+enum TokenKind {
+  VERIFY
+  RESET
+}
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+}
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+enum JobStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  email String @unique @db.VarChar(254)
+  name String @db.VarChar(80)
+  passwordHash String
+  emailVerifiedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  sessions Session[]
+  tokens AuthToken[]
+  memberships Membership[]
+  invitations Invitation[]
+  auditLogs AuditLog[]
+}
+model Session {
+  tokenHash String @id @db.VarChar(64)
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @db.Timestamptz(3)
+  lastSeenAt DateTime @default(now()) @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([userId])
+  @@index([expiresAt])
+}
+model AuthToken {
+  id String @id @default(uuid()) @db.Uuid
+  tokenHash String @unique @db.VarChar(64)
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind TokenKind
+  expiresAt DateTime @db.Timestamptz(3)
+  consumedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([userId, kind])
+  @@index([expiresAt])
+}
+model Workspace {
+  id String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(80)
+  timeZone String @default("America/Sao_Paulo")
+  plan Plan @default(FREE)
+  stripeCustomerId String? @unique
+  stripeSubscriptionId String? @unique
+  stripeCheckoutSessionId String?
+  checkoutGeneration Int @default(0)
+  billingStatus String @default("none")
+  billingSyncedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  memberships Membership[]
+  invitations Invitation[]
+  projects Project[]
+  tasks Task[]
+  auditLogs AuditLog[]
+}
+model Membership {
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @db.Uuid
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId String @db.Uuid
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @default(MEMBER)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  assignedTasks Task[]
+  @@unique([workspaceId, userId])
+  @@unique([id, workspaceId])
+  @@index([userId])
+}
+model Invitation {
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @db.Uuid
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  inviterId String @db.Uuid
+  inviter User @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+  email String @db.VarChar(254)
+  role Role @default(MEMBER)
+  tokenHash String @unique @db.VarChar(64)
+  expiresAt DateTime @db.Timestamptz(3)
+  acceptedAt DateTime? @db.Timestamptz(3)
+  revokedAt DateTime? @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([workspaceId, email])
+}
+model Project {
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @db.Uuid
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name String @db.VarChar(100)
+  description String @default("") @db.VarChar(2000)
+  color String @default("violet") @db.VarChar(20)
+  status ProjectStatus @default(ACTIVE)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  tasks Task[]
+  @@unique([id, workspaceId])
+  @@index([workspaceId, status])
+}
+model Task {
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @db.Uuid
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projectId String @db.Uuid
+  project Project @relation(fields: [projectId, workspaceId], references: [id, workspaceId], onDelete: Cascade)
+  assigneeMembershipId String? @db.Uuid
+  assignee Membership? @relation(fields: [assigneeMembershipId, workspaceId], references: [id, workspaceId], onDelete: Restrict)
+  title String @db.VarChar(160)
+  description String @default("") @db.VarChar(5000)
+  status TaskStatus @default(TODO)
+  priority Priority @default(MEDIUM)
+  dueDate DateTime? @db.Date
+  version Int @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  @@index([workspaceId, status, createdAt])
+  @@index([projectId, workspaceId])
+  @@index([assigneeMembershipId, workspaceId])
+}
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+  workspaceId String @db.Uuid
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actorId String? @db.Uuid
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action String @db.VarChar(80)
+  summary String @db.VarChar(200)
+  entityId String? @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([workspaceId, createdAt])
+}
+model EmailJob {
+  id String @id @default(uuid()) @db.Uuid
+  recipient String @db.VarChar(254)
+  subject String
+  text String
+  status JobStatus @default(PENDING)
+  attempts Int @default(0)
+  availableAt DateTime @default(now()) @db.Timestamptz(3)
+  lockedAt DateTime? @db.Timestamptz(3)
+  leaseId String? @db.Uuid
+  lastError String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([status, availableAt])
+}
+model StripeEvent {
+  id String @id
+  type String
+  customerId String?
+  status JobStatus @default(PENDING)
+  attempts Int @default(0)
+  availableAt DateTime @default(now()) @db.Timestamptz(3)
+  lockedAt DateTime? @db.Timestamptz(3)
+  leaseId String? @db.Uuid
+  lastError String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  @@index([status, availableAt])
+}

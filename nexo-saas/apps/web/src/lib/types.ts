@@ -1,0 +1,14 @@
+export type Role = 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
+export type Status = 'TODO' | 'IN_PROGRESS' | 'DONE';
+export type Priority = 'LOW' | 'MEDIUM' | 'HIGH';
+export type Workspace = { id: string; name: string; role: Role; membershipId: string; plan: 'FREE' | 'PRO' };
+export type Session = { user: { id: string; name: string; email: string; emailVerified: boolean }; csrfToken: string; workspaces: Workspace[] };
+export type Project = { id: string; workspaceId: string; name: string; description: string; color: string; status: 'ACTIVE' | 'ARCHIVED'; totalTasks: number; doneTasks: number };
+export type Member = { id: string; role: Role; user: { id: string; name: string; email: string } };
+export type Task = { id: string; title: string; description: string; status: Status; priority: Priority; projectId: string; assigneeMembershipId: string | null; dueDate: string | null; version: number; createdAt: string; project: { id: string; name: string; color: string }; assignee: { id: string; user: { id: string; name: string } } | null };
+export type Activity = { id: string; action: string; summary: string; createdAt: string; actor: { name: string } | null };
+export type PageResult<T> = { items: T[]; total: number; page: number; pageSize: number };
+export type TeamResult = { members: Member[]; invitations: { id: string; email: string; role: Role; expiresAt: string }[] };
+export type Dashboard = { counts: Record<Status, number>; projects: number; members: number; overdue: number; recentTasks: Task[]; activity: Activity[]; timeZone: string };
+export type Limits = { name: string; projects: number; members: number; tasks: number };
+export type Billing = { plan: 'FREE' | 'PRO'; limits: Limits; plans: Record<'FREE' | 'PRO', Limits>; usage: { projects: number; members: number; tasks: number }; billingStatus: string; syncedAt: string | null; configured: boolean; hasCustomer: boolean };
