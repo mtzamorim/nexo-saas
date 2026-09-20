@@ -1,5 +1,0 @@
-{
-  "check": "TypeScript/TSX syntactic transpilation, NOT semantic type checking",
-  "files": 40,
-  "errors": 0
-}
